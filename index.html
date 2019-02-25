@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Keyboard Warrior</title>
+    <style>
+        .pointer {
+            color: blue;
+            font-size: 130%;
+            display:inline-block;
+        }
+        .passage {
+            font-size: 120%;
+        }
+        #char:focus{
+            outline: none;
+        }
+        .wrong {
+            color: red;
+            font-size: 120%;
+            display:inline-block;
+        }
+        .correct {
+            color: green;
+            font-size: 120%;
+            display:inline-block;
+        }
+    </style>
+</head>
+
+<body>
+    <div id='mainpage'>
+        <h2>Keyboard Warrior</h2>
+
+        <!--Sign In Button and User Photo-->
+        <div align="right">
+            <a href="#" onclick="signin()" style="width: 8vw; height: 3vw; font-size: 2vw; line-height: 3vw;" id="signin">
+                <b>Sign in</b>
+            </a>
+            <div id="signindiv"></div>
+        </div>
+        <br>
+
+        <!--Menu Buttons-->
+        <button onclick="pick()">Start</button>
+        <button onclick="scoresdiv()">Scores</button>
+        <button>Settings</button>
+        <button onclick="helpdiv()">Help</button>
+
+        <!--Display for User's results after a game session-->
+        <div id="results"></div>
+    </div>
+
+    <!--Page shown during a game session-->
+    <div id="gamepage" style="display: none;">
+        <input type="text" oninput="keystroke()" id="char" style="border:none; color: white;">
+        <div id="details">
+            <b>WPM:</b><span id="wpm">0</span>
+            <b>Time:</b><span id="time">0</span>
+            <b>Accuracy:</b><span id="accuracy">0%</span>
+            <button onclick="quit()">Quit</button>
+        </div>
+        <p id="display" onclick="tofocus()" class="passage"></p>
+    </div>
+
+    <div id="helpdiv" style="display:none">
+        <h5>How To Play:</h5>
+        <ul>
+            <li>The goal is to type the presented text as fast and accurate as possible.</li>
+            <li>The blue character (letter number or sign) indicates your progress.</li>
+            <li>Red characters are ones that were not correctly typed. They lower your total score.</li>
+            <li>Characters turn green if correctly typed.</li>
+            <li>Your final score is a product of the number of words you typed in the given time and your accuracy.</li>
+            <li>For the app to be able to store your score, be sure to sign in.</li>
+        </ul>
+        <button onclick="closediv()">close</button>
+    </div>
+    <div id="scoresdiv" style="display:none">
+        Category:
+        <select id="scoretype" onchange="fetchscores()">
+            <option value="Overall">Overall</option>
+            <option value="Kenya">Kenya</option>
+            <option value="Jeff Bezos">Jeff Bezos</option>
+            <option value="History of Money">History of Money</option>
+            <option value="Music">Music</option>
+        </select>
+        <br><br><br>
+        <table>
+            <thead id="scoresthead">
+                <td><b>Name</b></td>
+                <td><b>Score</b></td>
+            </thead>
+            <tbody id="scorestable"></tbody>
+        </table>
+        <button onclick="closediv()">close</button>
+    </div>
+
+    <div id="picker" style="display:none">
+        Choose time duration:
+        <select id="timepicker">
+            <option value="30">30 seconds</option>
+            <option value="60">1 minute</option>
+            <option value="90">90 seconds</option>
+            <option value="120">2 minutes</option>
+        </select>
+        <br><br>
+        Choose an article:<br>
+        <a href='#' onclick="picked(0, 'Kenya')">Kenya</a><br>
+        <a href='#' onclick="picked(1, 'Jeff Bezos')">Jeff Bezos</a><br>
+        <a href='#' onclick="picked(2, 'History of Money')">History of Money</a><br>
+        <a href='#' onclick="picked(3, 'Music')">Music</a><br><br>
+        <button onclick="closediv()">Close</button>
+    </div>
+
+    <!-- The surrounding HTML is left untouched by FirebaseUI.
+     Your app may use that space for branding, controls and other customizations.-->
+    <div id="firebaseui-auth-container">
+        <h1 style="display: none;">Keyboard Warrior</h1>
+        <div id="loader" style="display: none;">Loading...</div>
+    </div>
+
+
+
+</body>
+
+<script src="https://www.gstatic.com/firebasejs/5.8.4/firebase.js"></script>
+<script src="https://www.gstatic.com/firebasejs/5.1.0/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/5.1.0/firebase-firestore.js"></script>
+
+<script>
+    // Initialize Firebase
+    var config = {
+        apiKey: "AIzaSyDRQLs6AXB2HIyuakdBbsh8Fa-m1_wj0iI",
+        authDomain: "keyboard-warrior-b7542.firebaseapp.com",
+        databaseURL: "https://keyboard-warrior-b7542.firebaseio.com",
+        projectId: "keyboard-warrior-b7542",
+        storageBucket: "",
+        messagingSenderId: "27646410638"
+    };
+    firebase.initializeApp(config);
+</script>
+<script src="https://cdn.firebase.com/libs/firebaseui/3.5.2/firebaseui.js"></script>
+<link type="text/css" rel="stylesheet" href="https://cdn.firebase.com/libs/firebaseui/3.5.2/firebaseui.css" />
+<script src="article.js"></script>
+<script>
+    chosen = 0;
+
+    function pick() {
+        document.getElementById("scoresdiv").style.display = "none";
+        document.getElementById("helpdiv").style.display = "none";
+        document.getElementById("mainpage").style.display = "none";
+        document.getElementById("picker").style.display = "block";
+    }
+
+    function picked(t, u) {
+        document.getElementById("picker").style.display = "none";
+        chosen = parseInt(t);
+        articlename = u;
+        startgame();
+    }
+
+    function signin() {
+        document.getElementById("mainpage").style.display = "none";
+        // Initialize the FirebaseUI Widget using Firebase.
+        var ui = new firebaseui.auth.AuthUI(firebase.auth());
+        var uiConfig = {
+            callbacks: {
+                signInSuccessWithAuthResult: function (authResult, redirectUrl) {
+                    // User successfully signed in.
+                    // Return type determines whether we continue the redirect automatically
+                    // or whether we leave that to developer to handle.
+                    return true;
+                },
+                uiShown: function () {
+                    // The widget is rendered.
+                    // Hide the loader.
+                    document.getElementById('loader').style.display = 'none';
+                }
+            },
+            // Will use popup for IDP Providers sign-in flow instead of the default, redirect.
+            signInFlow: 'popup',
+            signInSuccessUrl: 'keyboardwarrior.html',
+            signInOptions: [
+                // Leave the lines as is for the providers you want to offer your users.
+                firebase.auth.GoogleAuthProvider.PROVIDER_ID
+            ],
+            // Terms of service url.
+            tosUrl: 'keyboardwarrior.html'
+        };
+        // The start method will wait until the DOM is loaded.
+        ui.start('#firebaseui-auth-container', uiConfig);
+
+    }
+
+    firebase.firestore().enablePersistence()
+        .then(function () {
+            // Initialize Cloud Firestore through firebase
+            db = firebase.firestore();
+        })
+        .catch(function (err) {
+            if (err.code == 'failed-precondition') {
+                // Multiple tabs open, persistence can only be enabled
+                // in one tab at a a time.
+                // ...
+            } else if (err.code == 'unimplemented') {
+                // The current browser does not support all of the
+                // features required to enable persistence
+                // ...
+            }
+        });
+
+    firebase.auth().onAuthStateChanged(function (user) {
+        if (user) {
+            // User is signed in.
+            document.getElementById("signindiv").innerHTML =
+                "<img width='42' style='border-radius:50%' onclick='signin()' height='42' src = '" + user.photoURL +
+                "' alt = '" +
+                user.displayName + "'>";
+            document.getElementById("signin").style.display = "none";
+        } else {
+            // No user is signed in.
+            document.getElementById("signin").style.display = "block";
+            document.getElementById("signindiv").innerHTML = "";
+        }
+    });
+
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker
+                .register('../sw_cached_pages.js')
+                .then(reg => console.log('Service Worker: Registered'))
+                .catch(err => console.log(`Service Worker: Error: ${err}`));
+        });
+    }
+
+    let gameduration = 30;
+    let timer;
+    let pointer = 0;
+    let wrong = [];
+    let clipboard = [];
+    let start = true;
+    let counter = "";
+    let passage = article[0];
+
+    function closediv() {
+        document.getElementById("scoresdiv").style.display = "none";
+        document.getElementById("helpdiv").style.display = "none";
+        document.getElementById("picker").style.display = "none";
+        document.getElementById("mainpage").style.display = "block";
+    }
+
+    function helpdiv() {
+        document.getElementById("scoresdiv").style.display = "none";
+        document.getElementById("mainpage").style.display = "none";
+        document.getElementById("picker").style.display = "none";
+        document.getElementById("helpdiv").style.display = "block";
+    }
+
+    function scoresdiv() {
+        document.getElementById("helpdiv").style.display = "none";
+        document.getElementById("mainpage").style.display = "none";
+        document.getElementById("picker").style.display = "none";
+        document.getElementById("scoresdiv").style.display = "block";
+        fetchscores();
+    }
+
+    function fetchscores() {
+        document.getElementById("scorestable").innerHTML = "Loading...";
+        document.getElementById("scoresthead").style.visibility = "hidden";
+        if (document.getElementById('scoretype').value == 'Overall') {
+            collections = ["Kenya", "Jeff Bezos", "History of Money", "Music"];
+            overallscores = {};
+
+            for (let a = 0; a < collections.length; a++) {
+                db.collection(collections[a]).orderBy("highscore", "desc").where("highscore", ">=", 5)
+                    .get()
+                    .then(function (querySnapshot) {
+                        querySnapshot.forEach(function (doc) {
+                            // doc.data() is never undefined for query doc snapshots
+                            var players = doc.data();
+                            playersname = players.Name;
+                            if (!overallscores[playersname]) {
+                                overallscores[playersname] = players.highscore;
+                            } else if (players.highscore > overallscores[playersname]) {
+                                overallscores[playersname] = players.highscore;
+                            }
+
+                        });
+                        if (a == collections.length - 1) {
+                            var sortable = [];
+                            for (var oneplayer in overallscores) {
+                                sortable.push([oneplayer, overallscores[oneplayer]]);
+                            }
+
+                            sortable.sort(function (c, d) {
+                                return d[1] - c[1];
+                            });
+                            document.getElementById("scorestable").innerHTML = "";
+                            document.getElementById("scoresthead").style.visibility = "visible";
+                            sortable.forEach(elm => {
+                                document.getElementById("scorestable").innerHTML += "<tr><td>" + elm[0] +
+                                    " </td><td> : " + elm[1] + "</td></tr>";
+                            });
+
+                            if (document.getElementById("scorestable").innerHTML == "") {
+                                document.getElementById("scorestable").innerHTML = "<i>No records found</i>";
+                                document.getElementById("scoresthead").style.visibility = "hidden";
+                            }
+                        }
+                    })
+                    .catch(function (error) {
+                        console.log("Error getting documents: ", error);
+                    });
+            }
+
+        } else {
+            db.collection(document.getElementById('scoretype').value).orderBy("highscore", "desc").where("highscore",
+                    ">=", 5)
+
+                .get()
+                .then(function (querySnapshot) {
+                    document.getElementById("scorestable").innerHTML = "";
+                    document.getElementById("scoresthead").style.visibility = "visible";
+                    querySnapshot.forEach(function (doc) {
+                        // doc.data() is never undefined for query doc snapshots
+                        var players = doc.data();
+                        document.getElementById("scorestable").innerHTML += "<tr><td>" + players.Name +
+                            " </td><td> : " + players.highscore + "</td></tr>";
+                    });
+
+                    if (document.getElementById("scorestable").innerHTML == "") {
+                        document.getElementById("scorestable").innerHTML = "<i>No records found</i>";
+                        document.getElementById("scoresthead").style.visibility = "hidden";
+                    }
+                })
+                .catch(function (error) {
+                    console.log("Error getting documents: ", error);
+                });
+        }
+    }
+
+    function wpm() {
+        for (let c = 0; c < pointer; c++) {
+            counter += passage[c];
+        }
+        counter = counter.split(" ");
+        if (Number.isInteger(parseInt(eval(counter.length - 1) * 60 / eval(gameduration - parseInt(document.getElementById(
+                'time').innerHTML))))) {
+            return parseInt(eval(counter.length - 1) * 60 / eval(gameduration - parseInt(document.getElementById('time')
+                .innerHTML)));
+        } else {
+            return 0;
+        }
+    }
+
+    function accuracy() {
+        if (Number.isInteger(parseInt(eval(pointer - wrong.length) / pointer * 100))) {
+            return parseInt(eval(pointer - wrong.length) / pointer * 100);
+        } else {
+            return 0;
+        }
+    }
+
+    //manages the watch which counts down to zero when the game has started
+    function countdown() {
+        if (parseInt(document.getElementById('time').innerHTML) == 0) {
+            clearInterval(timer);
+            gameover();
+        } else {
+            document.getElementById('time').innerHTML = parseInt(document.getElementById('time').innerHTML) - 1;
+            document.getElementById('wpm').innerHTML = wpm();
+        }
+    }
+
+    //reloads the text to the display before and during a game session
+    function reloader() {
+        //stores the article for editing
+        clipboard = passage.split("");
+
+        //marks all characters before the pointer to be correct
+        for (let i = 0; i < pointer; i++) {
+            if (clipboard[i] != " ") {
+                clipboard[i] = `<span class='correct'> ${passage[i]} </span>`;
+            }
+        }
+
+        //marks out the wrong characters
+        for (let w = 0; w < wrong.length; w++) {
+            if (clipboard[wrong[w]] != " " && wrong[w] < pointer) {
+                clipboard[wrong[w]] = `<span class='wrong'> ${passage[wrong[w]]} </span>`;
+            }
+        }
+
+        //marks out the pointer
+        if (clipboard[pointer] != " ") {
+            clipboard[pointer] = `<span class='pointer'> ${passage[pointer]} </span>`;
+        }
+
+        document.getElementById('display').innerHTML = clipboard.join("");
+    }
+
+    //runs when user starts a game session
+    function startgame() {
+        pointer = 0;
+        wrong = [];
+        clipboard = [];
+        start = true;
+        counter = "";
+        passage = article[chosen];
+        gameduration = parseInt(document.getElementById('timepicker').value);
+        document.getElementById('char').value = "";
+        document.getElementById('wpm').innerHTML = 0;
+        document.getElementById('accuracy').innerHTML = '0%';
+        document.getElementById('time').innerHTML = gameduration;
+        document.getElementById('mainpage').style.display = 'none';
+        document.getElementById("helpdiv").style.display = "none";
+        document.getElementById("scoresdiv").style.display = "none";
+        document.getElementById('gamepage').style.display = 'block';
+        tofocus();
+        reloader();
+        start = true;
+    }
+
+    function quit(params) {
+        document.getElementById('mainpage').style.display = 'block';
+        document.getElementById('gamepage').style.display = 'none';
+        document.getElementById('results').innerHTML = '';
+        clearInterval(timer);
+    }
+
+    //runs when user stops game session or runs out of time
+    function gameover() {
+        document.getElementById('mainpage').style.display = 'block';
+        document.getElementById('gamepage').style.display = 'none';
+
+        document.getElementById('results').innerHTML =
+            `<b>${wpm()} words per minute,    ${accuracy()}% accuracy,   Total score: ${parseInt(wpm() * accuracy() / 100)}</b>`;
+
+        score = parseInt(wpm() * accuracy() / 100);
+        var user = firebase.auth().currentUser;
+        var uname, uid;
+        if (user != null) {
+            uname = user.displayName;
+            uid = user.uid; // The user's ID, unique to the Firebase project. Do NOT use
+            // this value to authenticate with your backend server, if
+            // you have one. Use User.getToken() instead.
+
+            var docRef = db.collection(articlename).doc(uid);
+            docRef.get().then(function (doc) {
+                if (doc.exists) {
+                    var returneddata = doc.data();
+                    if (returneddata.highscore < score) {
+                        // Add the current score
+                        db.collection(articlename).doc(uid).set({
+                                Name: uname,
+                                highscore: score
+                            })
+                            .then(function () {
+                                console.log("Document successfully written!");
+                            })
+                            .catch(function (error) {
+                                console.error("Error writing document: ", error);
+                            });
+                    } else {
+                        console.log("Current score less than high score");
+                    }
+
+                } else {
+                    // doc.data() will be undefined in this case
+                    // Add a new score
+                    db.collection(articlename).doc(uid).set({
+                            Name: uname,
+                            highscore: score,
+                        })
+                        .then(function () {
+                            console.log("Document successfully written!");
+                        })
+                        .catch(function (error) {
+                            console.error("Error writing document: ", error);
+                        });
+                }
+            }).catch(function (error) {
+                console.log("Error getting document:", error);
+            });
+        }
+    }
+
+    function keystroke() {
+        if (start) {
+            timer = setInterval(countdown, 1000);
+            start = false;
+        }
+
+        let char = document.getElementById('char').value;
+
+        if (char[char.length - 1] != passage[pointer]) {
+            wrong.push(pointer);
+        }
+
+        document.getElementById('accuracy').innerHTML = `${accuracy()}%`;
+        pointer = char.length;
+        reloader();
+
+        for (let x = 0; x < wrong.length; x++) {
+            if (pointer <= wrong[x]) {
+                wrong.splice(x, wrong.length + 1 - x);
+            }
+        }
+    }
+
+    function tofocus() {
+        document.getElementById('char').focus();
+    }
+</script>
+
+</html>

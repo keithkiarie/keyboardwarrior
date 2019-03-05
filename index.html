@@ -5,6 +5,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.0/css/bootstrap.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.0/js/bootstrap.min.js"></script>
     <title>Keyboard Warrior</title>
     <style>
         .pointer {
@@ -45,10 +49,9 @@
         <br>
 
         <!--Menu Buttons-->
-        <button onclick="pick()">Start</button>
-        <button onclick="scoresdiv()">Scores</button>
-        <button>Settings</button>
-        <button onclick="helpdiv()">Help</button>
+        <button onclick="pick()" class="btn">Start</button>
+        <button onclick="scoresdiv()" class="btn">Scores</button>
+        <button onclick="helpdiv()" class="btn">Help</button>
 
         <!--Display for User's results after a game session-->
         <div id="results"></div>
@@ -61,7 +64,7 @@
             <b>WPM:</b><span id="wpm">0</span>
             <b>Time:</b><span id="time">0</span>
             <b>Accuracy:</b><span id="accuracy">0%</span>
-            <button onclick="quit()">Quit</button>
+            <button onclick="quit()" class="btn">Quit</button>
         </div>
         <p id="display" onclick="tofocus()" class="passage"></p>
     </div>
@@ -76,7 +79,7 @@
             <li>Your final score is a product of the number of words you typed in the given time and your accuracy.</li>
             <li>For the app to be able to store your score, be sure to sign in.</li>
         </ul>
-        <button onclick="closediv()">close</button>
+        <button onclick="closediv()" class="btn">Close</button>
     </div>
     <div id="scoresdiv" style="display:none">
         Category:
@@ -88,14 +91,14 @@
             <option value="Music">Music</option>
         </select>
         <br><br><br>
-        <table>
+        <table class="table table-condensed table-hover table-responsive">
             <thead id="scoresthead">
                 <td><b>Name</b></td>
                 <td><b>Score</b></td>
             </thead>
             <tbody id="scorestable"></tbody>
         </table>
-        <button onclick="closediv()">close</button>
+        <button onclick="closediv()" class="btn">Close</button>
     </div>
 
     <div id="picker" style="display:none">
@@ -112,7 +115,7 @@
         <a href='#' onclick="picked(1, 'Jeff Bezos')">Jeff Bezos</a><br>
         <a href='#' onclick="picked(2, 'History of Money')">History of Money</a><br>
         <a href='#' onclick="picked(3, 'Music')">Music</a><br><br>
-        <button onclick="closediv()">Close</button>
+        <button onclick="closediv()" class="btn">Close</button>
     </div>
 
     <!-- The surrounding HTML is left untouched by FirebaseUI.
@@ -437,7 +440,7 @@
         document.getElementById('gamepage').style.display = 'none';
 
         document.getElementById('results').innerHTML =
-            `<b>${wpm()} words per minute,    ${accuracy()}% accuracy,   Total score: ${parseInt(wpm() * accuracy() / 100)}</b>`;
+            `<b>${wpm()} words per minute <br>  ${accuracy()}% accuracy <br> Total score: ${parseInt(wpm() * accuracy() / 100)}</b>`;
 
         score = parseInt(wpm() * accuracy() / 100);
         var user = firebase.auth().currentUser;
